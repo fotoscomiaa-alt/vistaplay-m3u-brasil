@@ -19,6 +19,10 @@ body { margin: 0; min-width: 320px; background: #0d0e0c; }
 button, input { font: inherit; }
 button { border: 0; }
 button:not(:disabled) { cursor: pointer; }
+.field { width: 100%; min-width: 0; border: 1px solid rgba(255,255,255,.10); border-radius: .75rem; background: rgba(0,0,0,.20); color: #e2e8f0; padding: .7rem .8rem; font-size: .78rem; outline: none; }
+.field::placeholder { color: #64748b; }
+.field:focus { border-color: rgba(190,255,88,.65); box-shadow: 0 0 0 3px rgba(190,255,88,.08); }
+select.field option { background: #151813; color: #e2e8f0; }
 
 .app-shell { min-height: 100vh; color: #f4f2ed; background: radial-gradient(circle at 80% -10%, rgba(197, 255, 83, .06), transparent 30%), #0d0e0c; }
 .topbar { height: 76px; border-bottom: 1px solid #242722; background: rgba(13,14,12,.84); backdrop-filter: blur(18px); position: sticky; top: 0; z-index: 20; }
