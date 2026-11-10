@@ -1,275 +1,106 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import Hls from "hls.js";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { startLogin } from "@/const";
+import { trpc } from "@/lib/trpc";
 import {
-  ChevronRight,
-  Heart,
-  ListVideo,
-  LoaderCircle,
-  Play,
-  Radio,
-  Search,
-  Settings2,
-  Signal,
-  SlidersHorizontal,
-  Sparkles,
-  Volume2,
-  X,
+  Activity,
+  CheckCircle2,
+  CircleAlert,
+  Copy,
+  ExternalLink,
+  FileDown,
+  History,
+  Link2,
+  ListPlus,
+  LogIn,
+  PlayCircle,
+  RefreshCw,
+  ShieldCheck,
+  Tv,
+  XCircle,
 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
-const DEFAULT_PLAYLIST =
-  "https://raw.githubusercontent.com/DEvmIb/famelack-channels-m3u/main/m3u/br.m3u";
+const playlistUrl = typeof window === "undefined" ? "/lista.m3u" : `${window.location.origin}/lista.m3u`;
 
-interface Channel {
-  name: string;
-  url: string;
-  group: string;
-  logo?: string;
-  number?: string;
-}
-
-const FALLBACK_CHANNELS: Channel[] = [
-  { name: "AgroCanal", url: "https://aovivo.equipea.com.br:5443/aovivort/streams/pshRLrnv6isXq7RG4747567774043229.m3u8", group: "Canais Brasil", number: "01" },
-  { name: "Amazon Sat", url: "https://amazonsat.brasilstream.com.br/hls/amazonsat/index.m3u8", group: "Canais Brasil", number: "02" },
-  { name: "Araruna TV", url: "https://video05.logicahost.com.br/ararunatv/ararunatv/playlist.m3u8", group: "Canais Brasil", number: "03" },
-  { name: "Aratu On", url: "https://cdn.live.br1.jmvstream.com/w/LVW-9359/LVW9359_XSyReL0QVf/playlist.m3u8", group: "Canais Brasil", number: "04" },
-  { name: "AWTV", url: "https://awtv.nuvemplay.live/hls/stream.m3u8", group: "Canais Brasil", number: "05" },
-  { name: "Band", url: "https://media.cdntvms.com.br/band_sat/index.m3u8", group: "Canais Brasil", number: "06" },
-  { name: "Bem Mais TV", url: "https://d1wphzgkgc.map.azionedge.net/bemmaistv01/bemmaistv01/playlist.m3u8", group: "Canais Brasil", number: "07" },
-  { name: "BR8 TV", url: "https://cdn.live.br1.jmvstream.com/w/LVW-11668/ngrp:LVW11668_wiJpjbMrks_all/playlist.m3u8", group: "Canais Brasil", number: "08" },
-  { name: "Canal 25 Jundiai", url: "https://stream01.msolutionbrasil.com.br/hls/canal25/live.m3u8", group: "Canais Brasil", number: "09" },
-  { name: "Canal Educação", url: "https://canaleducacao-stream.ebc.com.br/index.m3u8", group: "Canais Brasil", number: "10" },
-  { name: "Canal Gov", url: "https://canalgov-stream.ebc.com.br/index.m3u8", group: "Canais Brasil", number: "11" },
-  { name: "Cultura Fast", url: "https://fpa-gateway.tvcultura.com.br:8181/memfs/606caef0-a290-413d-9f1f-8fcdb3a73831.m3u8", group: "Canais Brasil", number: "12" },
-];
-
-function parseAttribute(line: string, key: string) {
-  const match = line.match(new RegExp(`${key}="([^"]*)"`, "i"));
-  return match?.[1] ?? "";
-}
-
-function parseM3U(text: string): Channel[] {
-  const lines = text.split(/\r?\n/).map((line) => line.trim());
-  const parsed: Channel[] = [];
-  let info: string | null = null;
-
-  for (const line of lines) {
-    if (line.startsWith("#EXTINF:")) {
-      info = line;
-      continue;
-    }
-    if (!line || line.startsWith("#") || !info) continue;
-    if (!line.startsWith("http://") && !line.startsWith("https://")) continue;
-
-    const comma = info.indexOf(",");
-    const name = comma >= 0 ? info.slice(comma + 1).trim() : "Canal ao vivo";
-    parsed.push({
-      name: name || "Canal ao vivo",
-      url: line,
-      group: parseAttribute(info, "group-title") || "Canais Brasil",
-      logo: parseAttribute(info, "tvg-logo") || undefined,
-      number: String(parsed.length + 1).padStart(2, "0"),
-    });
-    info = null;
-  }
-  return parsed;
-}
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase();
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { label: string; className: string }> = {
+    online: { label: "Online", className: "bg-emerald-500/15 text-emerald-300 border-emerald-400/20" },
+    offline: { label: "Offline", className: "bg-red-500/15 text-red-300 border-red-400/20" },
+    official_page_only: { label: "Página oficial", className: "bg-amber-500/15 text-amber-200 border-amber-400/20" },
+    pending: { label: "Pendente", className: "bg-slate-500/15 text-slate-300 border-slate-400/20" },
+  };
+  const item = config[status] ?? config.pending;
+  return <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium ${item.className}`}>{status === "online" ? <CheckCircle2 size={12} /> : status === "offline" ? <XCircle size={12} /> : <CircleAlert size={12} />}{item.label}</span>;
 }
 
 export default function Home() {
-  const [channels, setChannels] = useState<Channel[]>(FALLBACK_CHANNELS);
-  const [selected, setSelected] = useState<Channel>(FALLBACK_CHANNELS[0]);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
-  const [activeGroup, setActiveGroup] = useState("Todos");
-  const [playlistUrl, setPlaylistUrl] = useState(DEFAULT_PLAYLIST);
-  const [sourceStatus, setSourceStatus] = useState<"loading" | "ready" | "fallback">("loading");
-  const [sourceMessage, setSourceMessage] = useState("Carregando lista");
-  const [playerError, setPlayerError] = useState("");
-  const [showSource, setShowSource] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const { user, loading } = useAuth();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const snapshot = trpc.playlist.snapshot.useQuery(undefined, { enabled: user?.role === "admin" });
+  const refresh = trpc.playlist.refresh.useMutation({
+    onSuccess: async (result) => {
+      toast.success(`Verificação concluída: ${result.onlineCount} fonte(s) online.`);
+      await snapshot.refetch();
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => setIsRefreshing(false),
+  });
 
-  const loadPlaylist = async (url = playlistUrl) => {
-    setSourceStatus("loading");
-    setSourceMessage("Lendo playlist M3U…");
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Não foi possível acessar a lista");
-      const text = await response.text();
-      const parsed = parseM3U(text);
-      if (!parsed.length) throw new Error("A lista não contém canais válidos");
-      setChannels(parsed);
-      setSelected((current) => parsed.find((channel) => channel.url === current.url) ?? parsed[0]);
-      setSourceStatus("ready");
-      setSourceMessage(`${parsed.length} canais conectados`);
-    } catch {
-      setChannels(FALLBACK_CHANNELS);
-      setSelected(FALLBACK_CHANNELS[0]);
-      setSourceStatus("fallback");
-      setSourceMessage("Amostra local carregada");
-    }
-  };
-
-  useEffect(() => {
-    void loadPlaylist();
-  }, []);
-
-  useEffect(() => {
-    if (!selected || !videoRef.current) return;
-    const video = videoRef.current;
-    let hls: Hls | null = null;
-    setPlayerError("");
-    video.removeAttribute("src");
-    video.load();
-
-    const onError = () => setPlayerError("Este canal não respondeu. Tente outro canal da lista.");
-    video.addEventListener("error", onError);
-
-    if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = selected.url;
-      void video.play().catch(() => undefined);
-    } else if (Hls.isSupported()) {
-      hls = new Hls({ enableWorker: true, lowLatencyMode: true });
-      hls.loadSource(selected.url);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => void video.play().catch(() => undefined));
-      hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) setPlayerError("Não foi possível iniciar esta transmissão.");
-      });
-    } else {
-      video.src = selected.url;
-    }
-
-    return () => {
-      video.removeEventListener("error", onError);
-      hls?.destroy();
+  const stats = useMemo(() => {
+    const channels = snapshot.data?.channels ?? [];
+    return {
+      total: channels.length,
+      online: channels.filter((item) => item.status === "online").length,
+      pageOnly: channels.filter((item) => item.status === "official_page_only").length,
+      offline: channels.filter((item) => item.status === "offline").length,
     };
-  }, [selected]);
+  }, [snapshot.data]);
 
-  const groups = useMemo(() => ["Todos", ...Array.from(new Set(channels.map((channel) => channel.group)))], [channels]);
-  const visibleChannels = useMemo(() => {
-    const query = search.toLowerCase().trim();
-    return channels.filter((channel) => {
-      const matchesGroup = activeGroup === "Todos" || channel.group === activeGroup;
-      const matchesSearch = !query || channel.name.toLowerCase().includes(query);
-      return matchesGroup && matchesSearch;
-    });
-  }, [activeGroup, channels, search]);
-
-  const toggleFavorite = (name: string) => {
-    setFavorites((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name]);
+  const copyUrl = async () => {
+    await navigator.clipboard.writeText(playlistUrl);
+    toast.success("URL fixa copiada");
   };
+
+  if (loading) return <div className="min-h-screen bg-[#0d0e0c] text-white grid place-items-center"><RefreshCw className="animate-spin text-lime-300" /></div>;
+  if (!user) return <PublicLanding onLogin={() => startLogin()} />;
+  if (user.role !== "admin") return <PublicLanding onLogin={() => startLogin()} restricted />;
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="topbar-inner">
-          <div className="brand-mark">
-            <div className="brand-orb"><Radio size={18} strokeWidth={2.4} /></div>
-            <div>
-              <div className="brand-name">VISTA<span>PLAY</span></div>
-              <div className="brand-caption">live channels</div>
-            </div>
-          </div>
-          <div className="topbar-actions">
-            <div className="connection-pill"><span className={`status-dot ${sourceStatus}`} /> {sourceMessage}</div>
-            <button className="icon-button" onClick={() => setShowSource((value) => !value)} aria-label="Configurar fonte"><Settings2 size={18} /></button>
-          </div>
+    <div className="min-h-screen bg-[#0d0e0c] text-slate-100">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0d0e0c]/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
+          <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-lime-300 text-slate-950"><Tv size={20} /></div><div><p className="font-semibold tracking-tight">VistaPlay Control</p><p className="text-xs text-slate-500">Gerenciador M3U autorizado</p></div></div>
+          <div className="flex items-center gap-3 text-xs text-slate-400"><ShieldCheck size={15} className="text-lime-300" /> {user.name || user.email || "Administrador"}</div>
         </div>
       </header>
-
-      <main className="page-container">
-        <section className="hero-row">
-          <div className="hero-copy">
-            <div className="eyebrow"><Sparkles size={14} /> SUA CENTRAL AO VIVO</div>
-            <h1>Assista ao que<br /><em>está acontecendo.</em></h1>
-            <p>Um player leve para organizar sua lista M3U em uma experiência simples, rápida e sem distrações.</p>
+      <main className="mx-auto max-w-7xl space-y-8 px-5 py-8 lg:px-8">
+        <section className="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
+          <div className="rounded-3xl border border-lime-300/20 bg-[radial-gradient(circle_at_top_right,rgba(190,255,88,.16),transparent_42%),#151813] p-7 shadow-2xl shadow-black/20">
+            <div className="mb-8 flex items-center gap-2 text-xs font-medium uppercase tracking-[.18em] text-lime-300"><Activity size={14} /> URL permanente</div>
+            <h1 className="max-w-xl text-3xl font-semibold tracking-tight text-white md:text-5xl">Uma lista fixa. Fontes verificadas automaticamente.</h1>
+            <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-400">O DuplCast cadastra uma única URL. O sistema só publica fontes diretas marcadas como autorizadas e que responderam com manifesto HLS válido.</p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row"><div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-4 py-3 font-mono text-xs text-lime-100"><Link2 size={15} className="shrink-0 text-lime-300" /><span className="truncate">{playlistUrl}</span></div><button onClick={() => void copyUrl()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-lime-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-lime-200"><Copy size={15} /> Copiar URL</button></div>
+            <div className="mt-6 flex flex-wrap gap-3"><a href="/player" className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-slate-200 hover:border-lime-300/50"><PlayCircle size={16} /> Abrir player</a><a href="/lista.m3u" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-slate-200 hover:border-lime-300/50"><FileDown size={16} /> Ver M3U</a></div>
           </div>
-          <div className="hero-stat-card">
-            <div className="stat-label">TRANSMISSÃO ATIVA</div>
-            <div className="stat-main"><span className="live-pulse" /> AO VIVO</div>
-            <div className="stat-footer"><span>{channels.length} canais disponíveis</span><Signal size={16} /></div>
-          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-2">{[
+            { label: "Canais", value: stats.total, Icon: Tv },
+            { label: "Online", value: stats.online, Icon: CheckCircle2 },
+            { label: "Página oficial", value: stats.pageOnly, Icon: ExternalLink },
+            { label: "Offline", value: stats.offline, Icon: XCircle },
+          ].map(({ label, value, Icon }) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[.03] p-5"><Icon size={17} className={label === "Online" ? "text-emerald-300" : label === "Offline" ? "text-red-300" : "text-lime-300"} /><p className="mt-7 text-3xl font-semibold text-white">{value}</p><p className="mt-1 text-xs uppercase tracking-wider text-slate-500">{label}</p></div>)}</div>
         </section>
 
-        {showSource && (
-          <section className="source-panel">
-            <div>
-              <div className="panel-kicker">FONTE DA PLAYLIST</div>
-              <strong>Conecte sua lista M3U autorizada</strong>
-              <p>O endereço é salvo apenas nesta sessão do navegador.</p>
-            </div>
-            <div className="source-form">
-              <input value={playlistUrl} onChange={(event) => setPlaylistUrl(event.target.value)} aria-label="URL da playlist M3U" />
-              <button onClick={() => void loadPlaylist()} className="primary-button">Carregar lista</button>
-            </div>
-          </section>
-        )}
+        <section className="flex flex-col justify-between gap-4 rounded-2xl border border-white/10 bg-white/[.025] p-5 md:flex-row md:items-center"><div><p className="text-sm font-semibold text-white">Verificação manual</p><p className="mt-1 text-xs text-slate-500">Testa somente as fontes diretas autorizadas cadastradas. Páginas oficiais não são convertidas em M3U.</p></div><button disabled={isRefreshing || refresh.isPending} onClick={() => { setIsRefreshing(true); refresh.mutate({ trigger: "manual" }); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"><RefreshCw size={15} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? "Verificando…" : "Verificar agora"}</button></section>
 
-        <section className="player-grid">
-          <div className="player-card">
-            <div className="video-frame">
-              <video ref={videoRef} controls playsInline poster="" />
-              {!playerError && <div className="video-topline"><span className="live-tag">● LIVE</span><span>{selected.name}</span></div>}
-              {playerError && <div className="player-empty"><div className="empty-icon"><Signal size={23} /></div><strong>Sinal indisponível</strong><span>{playerError}</span></div>}
-              <div className="video-fade" />
-            </div>
-            <div className="player-meta">
-              <div>
-                <div className="now-playing-label"><span className="mini-live" /> NO AR AGORA</div>
-                <h2>{selected.name}</h2>
-                <div className="meta-sub"><span>{selected.group}</span><span className="meta-separator">•</span><span>Transmissão ao vivo</span></div>
-              </div>
-              <button className={`favorite-button ${favorites.includes(selected.name) ? "is-favorite" : ""}`} onClick={() => toggleFavorite(selected.name)} aria-label="Favoritar canal"><Heart size={19} fill={favorites.includes(selected.name) ? "currentColor" : "none"} /></button>
-            </div>
-          </div>
+        <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[.025]"><div className="flex items-center justify-between border-b border-white/10 px-5 py-4"><div><p className="text-sm font-semibold text-white">Canais cadastrados</p><p className="mt-1 text-xs text-slate-500">Categorias preservadas no group-title da M3U.</p></div><a href="/player" className="text-xs text-lime-300 hover:text-lime-200">Abrir player →</a></div><div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="border-b border-white/10 text-[11px] uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3 font-medium">Canal</th><th className="px-5 py-3 font-medium">Grupo</th><th className="px-5 py-3 font-medium">Status</th><th className="px-5 py-3 font-medium">Fonte oficial</th><th className="px-5 py-3 font-medium">Checado</th></tr></thead><tbody className="divide-y divide-white/[.07]">{snapshot.isLoading ? <tr><td colSpan={5} className="px-5 py-10 text-center text-slate-500">Carregando canais…</td></tr> : (snapshot.data?.channels ?? []).map((channel) => <tr key={channel.id} className="hover:bg-white/[.025]"><td className="px-5 py-4 font-medium text-slate-200">{channel.name}</td><td className="px-5 py-4 text-xs text-slate-400">{channel.groupTitle}</td><td className="px-5 py-4"><StatusBadge status={channel.status} /></td><td className="px-5 py-4"><a href={channel.officialPageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-lime-300 hover:text-lime-200">Abrir página <ExternalLink size={12} /></a></td><td className="px-5 py-4 text-xs text-slate-500">{channel.lastCheckedAt ? new Date(channel.lastCheckedAt).toLocaleString("pt-BR") : "Ainda não"}</td></tr>)}</tbody></table></div></section>
 
-          <aside className="up-next-card">
-            <div className="section-heading"><div><div className="panel-kicker">SUA PROGRAMAÇÃO</div><h3>Próximos canais</h3></div><ListVideo size={18} /></div>
-            <div className="mini-channel-list">
-              {channels.slice(0, 5).map((channel) => (
-                <button key={channel.url} className={`mini-channel ${channel.url === selected.url ? "active" : ""}`} onClick={() => setSelected(channel)}>
-                  <span className="mini-number">{channel.number}</span><span className="mini-channel-name">{channel.name}</span><ChevronRight size={15} />
-                </button>
-              ))}
-            </div>
-            <div className="up-next-footer"><Volume2 size={14} /> Selecione um canal para começar</div>
-          </aside>
-        </section>
-
-        <section className="channel-section">
-          <div className="channel-toolbar">
-            <div><div className="panel-kicker">BIBLIOTECA AO VIVO</div><h2>Todos os canais</h2></div>
-            <div className="search-wrap"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar canal" /><kbd>⌘ K</kbd>{search && <button onClick={() => setSearch("")} aria-label="Limpar busca"><X size={15} /></button>}</div>
-          </div>
-          <div className="filter-row">
-            <div className="group-tabs">{groups.map((group) => <button key={group} className={activeGroup === group ? "active" : ""} onClick={() => setActiveGroup(group)}>{group}</button>)}</div>
-            <div className="result-count"><SlidersHorizontal size={14} /> {visibleChannels.length} resultados</div>
-          </div>
-          {visibleChannels.length ? <div className="channel-grid">
-            {visibleChannels.map((channel, index) => (
-              <button key={`${channel.url}-${index}`} className={`channel-card ${selected.url === channel.url ? "selected" : ""}`} onClick={() => { setSelected(channel); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
-                <div className={`channel-art art-${index % 5}`}>
-                  {channel.logo ? <img src={channel.logo} alt="" /> : <span>{initials(channel.name)}</span>}
-                  <span className="art-live">LIVE</span>
-                </div>
-                <div className="channel-info"><span className="channel-index">{channel.number}</span><span className="channel-name">{channel.name}</span><span className="channel-type">{channel.group}</span></div>
-                <span className="card-play"><Play size={14} fill="currentColor" /></span>
-              </button>
-            ))}
-          </div> : <div className="no-results"><Search size={22} /><strong>Nenhum canal encontrado</strong><span>Tente outro nome ou categoria.</span></div>}
-        </section>
-
-        <footer className="footer-note"><span>VISTAPLAY / PLAYER DEMO</span><span>Use apenas listas e conteúdos com autorização.</span></footer>
+        <section className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]"><div className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><div className="mb-4 flex items-center gap-2"><ListPlus size={16} className="text-lime-300" /><p className="text-sm font-semibold">Fontes diretas cadastradas</p></div><div className="space-y-3">{(snapshot.data?.sources ?? []).map((source) => <div key={source.id} className="flex items-center justify-between gap-4 rounded-xl border border-white/[.08] bg-black/10 px-3 py-3"><div className="min-w-0"><p className="truncate text-xs text-slate-200">{source.label}</p><p className="truncate font-mono text-[10px] text-slate-600">{source.url}</p></div><StatusBadge status={source.status} /></div>)}{!snapshot.data?.sources?.length && <p className="text-sm text-slate-500">Nenhuma fonte direta cadastrada além das que aguardam autorização.</p>}</div></div><div className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><div className="mb-4 flex items-center gap-2"><History size={16} className="text-lime-300" /><p className="text-sm font-semibold">Histórico recente</p></div><div className="space-y-3">{(snapshot.data?.runs ?? []).slice(0, 5).map((run) => <div key={run.id} className="flex items-center justify-between border-b border-white/[.07] pb-3 text-xs"><span className="text-slate-400">{new Date(run.startedAt).toLocaleString("pt-BR")}</span><span className="text-emerald-300">{run.onlineCount} online</span></div>)}{!snapshot.data?.runs?.length && <p className="text-sm text-slate-500">Nenhuma execução registrada.</p>}</div></div></section>
       </main>
     </div>
   );
+}
+
+function PublicLanding({ onLogin, restricted = false }: { onLogin: () => void; restricted?: boolean }) {
+  return <div className="min-h-screen bg-[#0d0e0c] text-slate-100"><main className="mx-auto flex min-h-screen max-w-4xl items-center px-6 py-16"><div className="max-w-2xl"><div className="mb-6 inline-flex items-center gap-2 rounded-full border border-lime-300/20 bg-lime-300/10 px-3 py-1.5 text-xs text-lime-200"><ShieldCheck size={14} /> VistaPlay / fontes autorizadas</div><h1 className="text-4xl font-semibold tracking-tight text-white md:text-6xl">Gerencie sua lista M3U com uma URL que não muda.</h1><p className="mt-6 max-w-xl text-base leading-7 text-slate-400">Cadastre páginas oficiais, fontes diretas autorizadas e acompanhe a disponibilidade sem extrair tokens, quebrar DRM ou usar listas de terceiros.</p>{restricted && <p className="mt-5 text-sm text-amber-200">Sua conta está autenticada, mas ainda não tem permissão de administrador.</p>}<div className="mt-8 flex flex-wrap gap-3"><button onClick={onLogin} className="inline-flex items-center gap-2 rounded-xl bg-lime-300 px-5 py-3 text-sm font-semibold text-slate-950"><LogIn size={16} /> Entrar como administrador</button><a href="/player" className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-sm text-slate-200"><PlayCircle size={16} /> Abrir player</a></div></div></main></div>;
 }

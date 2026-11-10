@@ -1,0 +1,94 @@
+{
+  "updated_at": "2026-11-10T13:15:28.045407+00:00",
+  "channels": [
+    {
+      "name": "Globo",
+      "category": "Globo",
+      "official_page": "https://globoplay.globo.com/tv-globo/ao-vivo/7832875/",
+      "status": "official_page_only",
+      "checks": []
+    },
+    {
+      "name": "SBT",
+      "category": "SBT",
+      "official_page": "https://www.sbt.com.br/ao-vivo",
+      "status": "official_page_only",
+      "checks": []
+    },
+    {
+      "name": "Record TV",
+      "category": "Record TV",
+      "official_page": "https://www.recordplus.com/live",
+      "status": "official_page_only",
+      "checks": []
+    },
+    {
+      "name": "Band",
+      "category": "Band",
+      "official_page": "https://www.band.com.br/ao-vivo/band-nacional",
+      "status": "official_page_only",
+      "checks": []
+    },
+    {
+      "name": "RedeTV!",
+      "category": "RedeTV!",
+      "official_page": "https://www.redetv.uol.com.br/aovivo",
+      "status": "offline",
+      "checks": [
+        {
+          "url": "https://evpp.mm.uol.com.br/redetv1/redetv1/playlist.m3u8",
+          "online": false,
+          "http_status": 0,
+          "error": "<urlopen error [Errno -5] No address associated with hostname>"
+        },
+        {
+          "url": "https://evpp.mm.uol.com.br/redetv2/redetv2/playlist.m3u8",
+          "online": false,
+          "http_status": 0,
+          "error": "<urlopen error [Errno -5] No address associated with hostname>"
+        },
+        {
+          "url": "https://d34hqvk9w7ng50.cloudfront.net/stream/index.m3u8",
+          "online": false,
+          "http_status": 0,
+          "error": "<urlopen error [Errno -5] No address associated with hostname>"
+        }
+      ]
+    },
+    {
+      "name": "TV Cultura",
+      "category": "TV Cultura",
+      "official_page": "https://tvcultura.com.br/aovivo/",
+      "status": "official_page_only",
+      "checks": []
+    },
+    {
+      "name": "TV Brasil",
+      "category": "TV Brasil",
+      "official_page": "https://tvbrasil.ebc.com.br/webtv/",
+      "status": "official_page_only",
+      "checks": []
+    },
+    {
+      "name": "TV Câmara",
+      "category": "TV Câmara",
+      "official_page": "https://www.camara.leg.br/tv",
+      "status": "official_page_only",
+      "checks": []
+    },
+    {
+      "name": "TV Senado",
+      "category": "TV Senado",
+      "official_page": "https://www12.senado.leg.br/tv/programas/ao-vivo",
+      "status": "official_page_only",
+      "checks": []
+    },
+    {
+      "name": "Canal Gov",
+      "category": "TV Brasil",
+      "official_page": "https://canalgov.ebc.com.br/ao-vivo",
+      "status": "official_page_only",
+      "checks": []
+    }
+  ]
+}

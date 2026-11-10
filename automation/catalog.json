@@ -1,0 +1,96 @@
+[
+  {
+    "name": "Globo",
+    "slug": "globo",
+    "category": "Globo",
+    "group_title": "Canais | Globo",
+    "tvg_id": "globo.br",
+    "official_page": "https://globoplay.globo.com/tv-globo/ao-vivo/7832875/",
+    "sources": []
+  },
+  {
+    "name": "SBT",
+    "slug": "sbt",
+    "category": "SBT",
+    "group_title": "Canais | SBT",
+    "tvg_id": "sbt.br",
+    "official_page": "https://www.sbt.com.br/ao-vivo",
+    "sources": []
+  },
+  {
+    "name": "Record TV",
+    "slug": "record-tv",
+    "category": "Record TV",
+    "group_title": "Canais | Record TV",
+    "tvg_id": "record.br",
+    "official_page": "https://www.recordplus.com/live",
+    "sources": []
+  },
+  {
+    "name": "Band",
+    "slug": "band",
+    "category": "Band",
+    "group_title": "Canais | Band",
+    "tvg_id": "band.br",
+    "official_page": "https://www.band.com.br/ao-vivo/band-nacional",
+    "sources": []
+  },
+  {
+    "name": "RedeTV!",
+    "slug": "redetv",
+    "category": "RedeTV!",
+    "group_title": "Canais | RedeTV!",
+    "tvg_id": "redetv.br",
+    "official_page": "https://www.redetv.uol.com.br/aovivo",
+    "sources": [
+      {"label": "RedeTV! oficial — sinal 1", "url": "https://evpp.mm.uol.com.br/redetv1/redetv1/playlist.m3u8", "published_by_official": true},
+      {"label": "RedeTV! oficial — sinal 2", "url": "https://evpp.mm.uol.com.br/redetv2/redetv2/playlist.m3u8", "published_by_official": true},
+      {"label": "RedeTV! oficial — CloudFront", "url": "https://d34hqvk9w7ng50.cloudfront.net/stream/index.m3u8", "published_by_official": true}
+    ]
+  },
+  {
+    "name": "TV Cultura",
+    "slug": "tv-cultura",
+    "category": "TV Cultura",
+    "group_title": "Canais | TV Cultura",
+    "tvg_id": "tvcultura.br",
+    "official_page": "https://tvcultura.com.br/aovivo/",
+    "sources": []
+  },
+  {
+    "name": "TV Brasil",
+    "slug": "tv-brasil",
+    "category": "TV Brasil",
+    "group_title": "Canais | TV Brasil",
+    "tvg_id": "tvbrasil.br",
+    "official_page": "https://tvbrasil.ebc.com.br/webtv/",
+    "sources": []
+  },
+  {
+    "name": "TV Câmara",
+    "slug": "tv-camara",
+    "category": "TV Câmara",
+    "group_title": "Canais | TV Câmara",
+    "tvg_id": "tvcamara.br",
+    "official_page": "https://www.camara.leg.br/tv",
+    "sources": []
+  },
+  {
+    "name": "TV Senado",
+    "slug": "tv-senado",
+    "category": "TV Senado",
+    "group_title": "Canais | TV Senado",
+    "tvg_id": "tvsenado.br",
+    "official_page": "https://www12.senado.leg.br/tv/programas/ao-vivo",
+    "sources": []
+  },
+  {
+    "name": "Canal Gov",
+    "slug": "canal-gov",
+    "category": "TV Brasil",
+    "group_title": "Canais | TV Brasil",
+    "tvg_id": "canalgov.br",
+    "official_page": "https://canalgov.ebc.com.br/ao-vivo",
+    "sources": []
+  }
+]
