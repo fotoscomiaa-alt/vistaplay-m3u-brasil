@@ -12,6 +12,8 @@ Depois que o projeto for publicado em HTTPS, use:
 https://SEU-DOMINIO/lista.m3u
 ```
 
+No repositório GitHub público, a URL RAW curta é `https://raw.githubusercontent.com/fotoscomiaa-alt/vistaplay-m3u-brasil/main/lista.m3u`.
+
 No DuplCast, escolha **Adicionar playlist → M3U por URL**. A URL não muda; apenas o conteúdo é atualizado.
 
 ## Regra de fontes

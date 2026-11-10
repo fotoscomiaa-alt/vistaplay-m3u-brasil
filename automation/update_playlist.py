@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "automation" / "catalog.json"
 OUTPUT = ROOT / "client" / "public" / "lista.m3u"
+ROOT_OUTPUT = ROOT / "lista.m3u"
 STATUS = ROOT / "automation" / "status.json"
 
 
@@ -72,7 +73,9 @@ def main() -> int:
             "checks": checks,
         })
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    rendered = "\n".join(lines) + "\n"
+    OUTPUT.write_text(rendered, encoding="utf-8")
+    ROOT_OUTPUT.write_text(rendered, encoding="utf-8")
     STATUS.write_text(json.dumps({"updated_at": datetime.now(timezone.utc).isoformat(), "channels": status_rows}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     online = sum(row["status"] == "online" for row in status_rows)
     print(f"Generated {OUTPUT} with {online} online direct channel(s) and {len(status_rows) - online} page-only/offline channel(s).")
